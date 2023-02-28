@@ -18,6 +18,9 @@ import flask_login
 import os
 import base64
 
+# For create dates
+
+import dbapi
 
 mysql = MySQL()
 app = Flask(__name__)
@@ -35,16 +38,8 @@ mysql.init_app(app)
 login_manager = flask_login.LoginManager()
 login_manager.init_app(app)
 
-conn = mysql.connect()
-cursor = conn.cursor()
-cursor.execute("SELECT email from Users")
-users = cursor.fetchall()
-
-
-def getUserList():
-    cursor = conn.cursor()
-    cursor.execute("SELECT email from Users")
-    return cursor.fetchall()
+dbconnector = dbapi.dbconnector(mysql)
+users = dbconnector.getUserList()
 
 
 class User(flask_login.UserMixin):
@@ -53,7 +48,7 @@ class User(flask_login.UserMixin):
 
 @login_manager.user_loader
 def user_loader(email):
-    users = getUserList()
+    users = dbconnector.getUserList()
     if not (email) or email not in str(users):
         return
     user = User()
@@ -63,7 +58,7 @@ def user_loader(email):
 
 @login_manager.request_loader
 def request_loader(request):
-    users = getUserList()
+    users = dbconnector.getUserList()
     email = request.form.get('email')
     if not (email) or email not in str(users):
         return
@@ -98,10 +93,7 @@ def login():
 			   '''
     # The request method is POST (page is recieving data)
     email = flask.request.form['email']
-    cursor = conn.cursor()
-    # check if email is registered
-    if cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'"):
-        data = cursor.fetchall()
+    if (data := dbconnector.getUserPasswordFromEmail(email)):
         pwd = str(data[0][0])
         if flask.request.form['password'] == pwd:
             user = User()
@@ -149,13 +141,9 @@ def register_user():
         # this prints to shell, end users will not see this (all print statements go to shell)
         print("couldn't find all tokens")
         return flask.redirect(flask.url_for('register'))
-    cursor = conn.cursor()
-    test = isEmailUnique(email)
+    test = dbconnector.isEmailUnique(email)
     if test:
-        print(cursor.execute(
-            f"INSERT INTO Users (firstname, lastname, email, dob, password) VALUES ('{firstname}', '{lastname}', '{email}', '{dob}', '{password}')"))
-        conn.commit()
-        # log user in
+        dbconnector.addNewUser(firstname, lastname, email, dob, password)
         user = User()
         user.id = email
         flask_login.login_user(user)
@@ -163,29 +151,6 @@ def register_user():
     else:
         print(f"User trying to regester as {email} is not unique")
         return flask.redirect(flask.url_for('register', supress=False))
-
-
-def getUsersPhotos(uid):
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT imgdata, picture_id, caption FROM Pictures WHERE user_id = '{uid}'")
-    return cursor.fetchall()  # NOTE return a list of tuples, [(imgdata, pid, caption), ...]
-
-
-def getUserIdFromEmail(email):
-    cursor = conn.cursor()
-    cursor.execute(f"SELECT user_id  FROM Users WHERE email = '{email}'")
-    return cursor.fetchone()[0]
-
-
-def isEmailUnique(email):
-    # use this to check if a email has already been registered
-    cursor = conn.cursor()
-    if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
-        # this means there are greater than zero entries with that email
-        return False
-    else:
-        return True
-# end login code
 
 
 @app.route('/profile')
@@ -206,20 +171,20 @@ def allowed_file(filename):
 @app.route('/upload', methods=['GET', 'POST'])
 @flask_login.login_required
 def upload_file():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
     if request.method == 'POST':
-        uid = getUserIdFromEmail(flask_login.current_user.id)
         imgfile = request.files['photo']
         caption = request.form.get('caption')
+        newAlbumName = request.form.get('newalbum')
+        if newAlbumName:
+            dbconnector.createNewAlbum(newAlbumName, uid)
         photo_data = imgfile.read()
-        cursor = conn.cursor()
-        cursor.execute('''INSERT INTO Pictures (imgdata, user_id, caption) VALUES (%s, %s, %s )''',
-                       (photo_data, uid, caption))
-        conn.commit()
-        return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=getUsersPhotos(uid), base64=base64)
-    # The method is GET so we return a  HTML form to upload the a photo.
+        album_id = dbconnector.getAlbumIDFromName(newAlbumName, uid)
+        dbconnector.addNewPhoto(photo_data, album_id, caption)
+        return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=dbconnector.getUsersPhotos(uid), base64=base64)
     else:
-        return render_template('upload.html')
-# end photo uploading code
+        albums = dbconnector.getUserAlbums(uid)
+        return render_template('upload.html', albums=albums)
 
 
 # default page

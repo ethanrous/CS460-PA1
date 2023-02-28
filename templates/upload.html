@@ -11,6 +11,16 @@
                 <input type="file" name="photo" required='true' /><br />
                 <label for="caption">Please caption:</label>
                 <input type="text" name="caption" required='true' /><br />
+                {%if albums%}
+                <select name=albums method="GET" action="/upload">
+                    {% for album in albums %}
+                    <option value="{{album}}" SELECTED>{{albums}}</option>"
+                    {% endfor %}
+                </select>
+                {% else %}
+                <label for="newalbum">New album name:</label>
+                <input type="text" name="newalbum" required='true' /><br />
+                {% endif %}
                 <input type="submit" value="Upload" />
-            </form>
+        </form>
     </body>
