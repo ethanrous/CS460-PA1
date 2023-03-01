@@ -184,16 +184,24 @@ def allowed_file(filename):
 @app.route('/upload', methods=['GET', 'POST'])
 @flask_login.login_required
 def upload_file():
+
+
     uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
     if request.method == 'POST':
         imgfile = request.files['photo']
         caption = request.form.get('caption')
+        tag = request.form.get('tag')
         newAlbumName = request.form.get('newalbum')
+        tag_test = dbconnector.isTagValid
+        if tag_test == False:
+            albums = dbconnector.getUserAlbums(uid)
+            return render_template('upload.html', albums=albums, tag_fail=True)
         if newAlbumName:
             dbconnector.createNewAlbum(newAlbumName, uid)
         photo_data = imgfile.read()
         album_id = dbconnector.getAlbumIDFromName(newAlbumName, uid)
-        dbconnector.addNewPhoto(photo_data, album_id, caption)
+        photoID = dbconnector.addNewPhoto(photo_data, album_id, caption)
+        dbconnector.getTaggedWith(tag, photoID)
         return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=dbconnector.getUsersPhotos(uid), base64=base64)
     else:
         albums = dbconnector.getUserAlbums(uid)

@@ -16,15 +16,15 @@
         <div id="content">
             <form method="post" action="{{ url_for('register_user') }}">
                 <label for="firstname">First Name:</label>
-                <input type="firstname" name="firstname" /><br />
+                <input type="firstname" name="firstname" required = 'true'/><br />
                 <label for="lastname">Last Name:</label>
-                <input type="lastname" name="lastname" /><br />
+                <input type="lastname" name="lastname" required ='true' /><br />
                 <label for="email">Your Email Address:</label>
-                <input type="email" name="email" /><br />
+                <input type="email" name="email" required ='true' /><br />
                 <label for="dob">Date of Birth (YYYY-MM-DD):</label>
-                <input type="dob" name="dob" /><br />
+                <input type="dob" name="dob" required = 'true'/><br />
                 <label for="password">Enter Password:</label>
-                <input type="password" name="password" /><br />
+                <input type="password" name="password" required ='true' /><br />
                 <input type="submit" />
             </form>
          </div>

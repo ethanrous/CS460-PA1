@@ -60,7 +60,8 @@ class dbconnector():
         cursor.execute("""INSERT INTO Photos(photo_data, album_id, photo_caption) VALUES (%s, %s, %s)""",
                        (photo_data, album_id, caption))
         self.conn.commit()
-        return
+        
+        return cursor.lastrowid
 
     def addNewUser(self, firstname, lastname, email, dob, password):
         cursor = self.conn.cursor()
@@ -78,6 +79,25 @@ class dbconnector():
         else:
             return True
     # end login code
+
+    def isTagValid(self,tag):
+        # Check to see if input tag is in correct format
+        tag_list = tag.split(", ")
+        for word in tag_list:
+            if ' ' in word:
+                return False
+            
+        return True
+
+    def getTaggedWith(self,tag,photoID):
+        cursor = self.conn.cursor()
+        multipleTags = tag.split(", ")
+        for word in multipleTags:
+            cursor.execute(f"INSERT INTO Tagged_With (tag_name, photo_id) VALUES ('{word}', '{photoID}') ")
+            cursor.execute(f"INSERT INTO Tags (tag_name) ('{word}')")
+        return
+
+
 
     def isDOBCorrect(self, dob):
         # Use this to check if DOB format is correct
