@@ -122,11 +122,19 @@ def unauthorized_handler():
 @app.route("/register", methods=['GET'])
 def register():
     try:
-        supress = request.args['supress']
+        request.args['supress']
+        supress = None
+
     except:
         supress = True
+    try:
+        request.args['dob_test']
+        dob_test = None
+
+    except:
+        dob_test = True
     print("here")
-    return render_template('register.html', supress=supress)
+    return render_template('register.html', supress=supress, dob_test = dob_test)
 
 
 @app.route("/register", methods=['POST'])
@@ -141,13 +149,18 @@ def register_user():
         # this prints to shell, end users will not see this (all print statements go to shell)
         print("couldn't find all tokens")
         return flask.redirect(flask.url_for('register'))
-    test = dbconnector.isEmailUnique(email)
-    if test:
-        dbconnector.addNewUser(firstname, lastname, email, dob, password)
-        user = User()
-        user.id = email
-        flask_login.login_user(user)
-        return render_template('hello.html', name=email, message='Account Created!')
+    email_test = dbconnector.isEmailUnique(email)
+    dob_tester = dbconnector.isDOBCorrect(dob)
+    if email_test:
+        if dob_tester:
+            dbconnector.addNewUser(firstname, lastname, email, dob, password)
+            user = User()
+            user.id = email
+            flask_login.login_user(user)
+            return render_template('hello.html', name=email, message='Account Created!')
+        else:
+            print(f"User trying to register has incorrect format for dob")
+            return flask.redirect(flask.url_for('register', dob_test=False))
     else:
         print(f"User trying to regester as {email} is not unique")
         return flask.redirect(flask.url_for('register', supress=False))

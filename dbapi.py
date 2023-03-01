@@ -1,4 +1,5 @@
 from datetime import date
+import datetime
 
 
 class dbconnector():
@@ -77,3 +78,12 @@ class dbconnector():
         else:
             return True
     # end login code
+
+    def isDOBCorrect(self, dob):
+        # Use this to check if DOB format is correct
+        try:
+            datetime.date.fromisoformat(dob)
+            return True
+        except ValueError:
+            return False
+        
