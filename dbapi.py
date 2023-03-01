@@ -7,10 +7,38 @@ class dbconnector():
     def __init__(self, mysql):
         self.conn = mysql.connect()
 
-    def getUserList(self):
+    def getUserList(self, exclude=None):
         cursor = self.conn.cursor()
-        cursor.execute("SELECT email from Users")
-        return cursor.fetchall()
+        if exclude:
+            cursor.execute(f"SELECT email from Users WHERE NOT user_id={exclude}")
+        else:
+            cursor.execute(f"SELECT email from Users")
+        return cursor.fetchall()[0]
+
+    def getAllUsersNames(self, exclude=None):
+        cursor = self.conn.cursor()
+        if exclude:
+            cursor.execute(f"SELECT first_name, last_name from Users WHERE NOT user_id={exclude}")
+        else:
+            cursor.execute(f"SELECT first_name, last_name from Users")
+        names = cursor.fetchall()
+        formatted_names = []
+        for name in names:
+            formatted_names.append(f"{name[0]} {name[1]}")
+            print(f"{name[0]} {name[1]}")
+        return formatted_names
+
+    def getUserFriends(self, uid):
+        return []
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT UINQUE Users.first_name, Users.last_name FROM Users JOIN Friends_with ON Users.user_id=Friends_with.user_1 OR Users.user_id=Friends_with.user_2 WHERE Friends_with.user_1={uid} OR Friends_with.user_2={uid}")
+        names = cursor.fetchall()
+        formatted_names = []
+        for name in names:
+            formatted_names.append(f"{name[0]} {name[1]}")
+            print(f"{name[0]} {name[1]}")
+        return formatted_names
 
     def getUsersPhotos(self, uid):
         cursor = self.conn.cursor()
@@ -29,6 +57,11 @@ class dbconnector():
         cursor.execute(f"SELECT user_id  FROM Users WHERE email = '{email}'")
         return cursor.fetchone()[0]
 
+    def getUserIdFromUsername(self, username):
+        cursor = self.conn.cursor()
+        cursor.execute(f"SELECT user_id  FROM Users WHERE email = '{username}'")
+        return cursor.fetchone()[0]
+
     def getUserPasswordFromEmail(self, email):
         cursor = self.conn.cursor()
         cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'")
@@ -38,9 +71,11 @@ class dbconnector():
         cursor = self.conn.cursor()
         cursor.execute(
             f"SELECT album_name FROM Albums JOIN Owns_Album ON Owns_Album.album_id=Albums.album_id WHERE user_id={uid}")
-        albums = cursor.fetchall()
-        print(albums)
-        return albums
+        albumsTuple = cursor.fetchall()
+        albums = []
+        for album in range(len(albumsTuple)):
+            albums.append(albumsTuple[album][0])
+        return sorted(albums)
 
     def createNewAlbum(self, albumName, ownerID):
         cursor = self.conn.cursor()
@@ -65,6 +100,13 @@ class dbconnector():
         cursor = self.conn.cursor()
         cursor.execute(
             f"INSERT INTO Users (first_name, last_name, email, dob, password) VALUES ('{firstname}', '{lastname}', '{email}', '{dob}', '{password}')")
+        self.conn.commit()
+        return
+
+    def addfriend(self, uid1, uid2):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"INSERT INTO Friends_with (user_1, user_2) VALUES ('{uid1}', '{uid2}')")
         self.conn.commit()
         return
 

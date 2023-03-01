@@ -1,0 +1,26 @@
+<!-- author ben lawson (balawson@bu.edu) -->
+
+<head>
+    <title>Send a friend request!</title>
+</head>
+
+<body>
+    <div class="title">
+        <h1>Send a friend request</h1>
+    </div>
+    {% if nousers %}
+    <h4>There are currently no other users, invite some friends to join!</h4>
+    <h4><a href='/'>Return Home</a> </h4>
+    {% else %}
+    <form method="post" enctype="multipart/form-data" action="/addfriend">
+        <label for="newfriend">Friend Name:</label>
+        <select name="newfriend" method="GET" action="/addfriend">
+            {% for user in users %}
+            <option value="{{user}}" SELECTED>{{user}}</option>"
+            {% endfor %}
+            <option value="none" selected disabled hidden>Select a User</option>
+        </select>
+        <input type="submit" value="Add Friend" />
+        {% endif %}
+    </form>
+</body>

@@ -122,7 +122,8 @@ def unauthorized_handler():
 @app.route("/register", methods=['GET'])
 def register():
     try:
-        supress = request.args['supress']
+        request.args['supress']
+        supress = None
     except:
         supress = True
     print("here")
@@ -175,17 +176,63 @@ def upload_file():
     if request.method == 'POST':
         imgfile = request.files['photo']
         caption = request.form.get('caption')
-        newAlbumName = request.form.get('newalbum')
-        if newAlbumName:
-            dbconnector.createNewAlbum(newAlbumName, uid)
+        albumName = request.form.get('newalbum')
+        if albumName:
+            dbconnector.createNewAlbum(albumName, uid)
+        else:
+            albumName = request.form.get('album')
+            print(f"ALBUMNAME: {albumName}")
+            if albumName == None:
+                albums = dbconnector.getUserAlbums(uid)
+                return render_template('upload.html', albums=albums, failedAlbum=True)
         photo_data = imgfile.read()
-        album_id = dbconnector.getAlbumIDFromName(newAlbumName, uid)
+        album_id = dbconnector.getAlbumIDFromName(albumName, uid)
         dbconnector.addNewPhoto(photo_data, album_id, caption)
         return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=dbconnector.getUsersPhotos(uid), base64=base64)
     else:
         albums = dbconnector.getUserAlbums(uid)
+        print(albums)
         return render_template('upload.html', albums=albums)
 
+
+@app.route('/newalbum', methods=['GET', 'POST'])
+@flask_login.login_required
+def new_album():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    if request.method == 'POST':
+        newAlbumName = request.form.get('newalbum')
+        dbconnector.createNewAlbum(newAlbumName, uid)
+        return render_template('hello.html', name=flask_login.current_user.id, message='Album Created!')
+    else:
+        return render_template('newalbum.html')
+
+
+@app.route('/friends', methods=['GET'])
+@flask_login.login_required
+def list_friends():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    user_friends = dbconnector.getUserFriends(uid)
+    if len(user_friends) == 0:
+        return render_template('friends.html', nofriends=True)
+    else:
+        return render_template('friends.html', friends=user_friends)
+
+
+@app.route('/addfriend', methods=['GET', 'POST'])
+@flask_login.login_required
+def add_friend():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    if request.method == 'POST':
+        newfriendemail = request.form.get('newfriend')
+        frienduid = dbconnector.getUserIdFromEmail(newfriendemail)
+        dbconnector.addfriend(frienduid, uid)
+        return render_template('hello.html', name=flask_login.current_user.id, message='Friend Added!')
+    else:
+        allusers = dbconnector.getUserList(exclude=uid)
+        if len(allusers) == 0:
+            return render_template('addfriend.html', nousers=True)
+        else:
+            return render_template('addfriend.html', users=allusers)
 
 # default page
 @app.route("/", methods=['GET'])
