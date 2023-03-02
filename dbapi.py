@@ -1,4 +1,5 @@
 from datetime import date
+import datetime
 
 
 class dbconnector():
@@ -119,3 +120,34 @@ class dbconnector():
         else:
             return True
     # end login code
+    def isTagValid(self,tag):
+       # Check to see if input tag is in correct format
+       tag_list = tag.split(", ")
+       for word in tag_list:
+           if ' ' in word:
+               return False
+          
+       return True
+
+
+    def getTaggedWith(self,tag,photoID):
+       cursor = self.conn.cursor()
+       multipleTags = tag.split(", ")
+       for word in multipleTags:
+           cursor.execute(f"INSERT INTO Tagged_With (tag_name, photo_id) VALUES ('{word}', '{photoID}') ")
+           cursor.execute(f"INSERT INTO Tags (tag_name) ('{word}')")
+       return
+
+
+
+
+
+
+    def isDOBCorrect(self, dob):
+       # Use this to check if DOB format is correct
+       try:
+           datetime.date.fromisoformat(dob)
+           return True
+       except ValueError:
+           return False
+      

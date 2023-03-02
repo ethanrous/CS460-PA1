@@ -1,10 +1,15 @@
 <!-- author ben lawson balawson@bu.edu -->
 <head>
     <title>Create an account!</title>
-</head>
-{%if not supress%}
-<h1> Email already in use! Use another one or <a href="/login">login</a></h1>
-{% endif %}
+ </head>
+ {%if not supress%}
+ <h1> Email already in use! Use another one or <a href="/login">login</a></h1>
+ 
+ 
+ {% endif %}
+ {%if not dob_test%}
+ <h1> Incorrect format for DOB or <a href="/login">login</a></h1>
+ {% endif %}
     <body>
         <div class="title">
             <h1>Enter your information below</h1>
@@ -12,17 +17,17 @@
         <div id="content">
             <form method="post" action="{{ url_for('register_user') }}">
                 <label for="firstname">First Name:</label>
-                <input type="firstname" name="firstname" /><br />
+                <input type="firstname" name="firstname" required = 'true'/><br />
                 <label for="lastname">Last Name:</label>
-                <input type="lastname" name="lastname" /><br />
+                <input type="lastname" name="lastname" required ='true' /><br />
                 <label for="email">Your Email Address:</label>
-                <input type="email" name="email" /><br />
+                <input type="email" name="email" required ='true' /><br />
                 <label for="dob">Date of Birth (YYYY-MM-DD):</label>
-                <input type="dob" name="dob" /><br />
+                <input type="dob" name="dob" required = 'true'/><br />
                 <label for="password">Enter Password:</label>
-                <input type="password" name="password" /><br />
+                <input type="password" name="password" required ='true' /><br />
                 <input type="submit" />
             </form>
          </div>
     </body>
-<a href='/'>Home</a>
+ <a href='/'>Home</a>

@@ -183,6 +183,7 @@ def allowed_file(filename):
 @app.route('/upload', methods=['GET', 'POST'])
 @flask_login.login_required
 def upload_file():
+    
     uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
     if request.method == 'POST':
         imgfile = request.files['photo']
