@@ -1,0 +1,1 @@
+SELECT Users.first_name, Users.last_name FROM Users;
