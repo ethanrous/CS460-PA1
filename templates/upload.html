@@ -2,24 +2,25 @@
 <head>
     <title>Upload a photo!</title>
 </head>
-    {%if failedAlbum == True %}
-    <h1>Please select an album</h1>
-    {% endif %}
     <body>
         <div class="title">
             <h1>Upload a photo to Photoshare</h1>
         </div>
+            {%if tag_fail%}
+            <h2>Invalid tag format</h2>
+            {% endif %}
             <form method="post" enctype="multipart/form-data" action="/upload">
                 <label for="photo">Select photo:</label>
                 <input type="file" name="photo" required='true' /><br />
                 <label for="caption">Please caption:</label>
                 <input type="text" name="caption" required='true' /><br />
+                <label for="tag">Tags (Optional) (Ex. Boston, Friends, ...):</label>
+                <input type="text" name="tag" required='true' /><br />
                 {%if albums%}
-                <select name="album" method="GET" action="/upload">
+                <select name=albums method="GET" action="/upload">
                     {% for album in albums %}
-                    <option value="{{album}}" SELECTED>{{album}}</option>"
+                    <option value="{{album}}" SELECTED>{{albums}}</option>"
                     {% endfor %}
-                    <option value="none" selected disabled hidden>Select an Album</option>
                 </select>
                 {% else %}
                 <label for="newalbum">New album name:</label>

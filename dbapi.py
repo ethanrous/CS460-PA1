@@ -8,38 +8,10 @@ class dbconnector():
     def __init__(self, mysql):
         self.conn = mysql.connect()
 
-    def getUserList(self, exclude=None):
+    def getUserList(self):
         cursor = self.conn.cursor()
-        if exclude:
-            cursor.execute(f"SELECT email from Users WHERE NOT user_id={exclude}")
-        else:
-            cursor.execute(f"SELECT email from Users")
-        return cursor.fetchall()[0]
-
-    def getAllUsersNames(self, exclude=None):
-        cursor = self.conn.cursor()
-        if exclude:
-            cursor.execute(f"SELECT first_name, last_name from Users WHERE NOT user_id={exclude}")
-        else:
-            cursor.execute(f"SELECT first_name, last_name from Users")
-        names = cursor.fetchall()
-        formatted_names = []
-        for name in names:
-            formatted_names.append(f"{name[0]} {name[1]}")
-            print(f"{name[0]} {name[1]}")
-        return formatted_names
-
-    def getUserFriends(self, uid):
-        return []
-        cursor = self.conn.cursor()
-        cursor.execute(
-            f"SELECT UINQUE Users.first_name, Users.last_name FROM Users JOIN Friends_with ON Users.user_id=Friends_with.user_1 OR Users.user_id=Friends_with.user_2 WHERE Friends_with.user_1={uid} OR Friends_with.user_2={uid}")
-        names = cursor.fetchall()
-        formatted_names = []
-        for name in names:
-            formatted_names.append(f"{name[0]} {name[1]}")
-            print(f"{name[0]} {name[1]}")
-        return formatted_names
+        cursor.execute("SELECT email from Users")
+        return cursor.fetchall()
 
     def getUsersPhotos(self, uid):
         cursor = self.conn.cursor()
@@ -58,11 +30,6 @@ class dbconnector():
         cursor.execute(f"SELECT user_id  FROM Users WHERE email = '{email}'")
         return cursor.fetchone()[0]
 
-    def getUserIdFromUsername(self, username):
-        cursor = self.conn.cursor()
-        cursor.execute(f"SELECT user_id  FROM Users WHERE email = '{username}'")
-        return cursor.fetchone()[0]
-
     def getUserPasswordFromEmail(self, email):
         cursor = self.conn.cursor()
         cursor.execute(f"SELECT password FROM Users WHERE email = '{email}'")
@@ -72,11 +39,9 @@ class dbconnector():
         cursor = self.conn.cursor()
         cursor.execute(
             f"SELECT album_name FROM Albums JOIN Owns_Album ON Owns_Album.album_id=Albums.album_id WHERE user_id={uid}")
-        albumsTuple = cursor.fetchall()
-        albums = []
-        for album in range(len(albumsTuple)):
-            albums.append(albumsTuple[album][0])
-        return sorted(albums)
+        albums = cursor.fetchall()
+        print(albums)
+        return albums
 
     def createNewAlbum(self, albumName, ownerID):
         cursor = self.conn.cursor()
@@ -95,19 +60,13 @@ class dbconnector():
         cursor.execute("""INSERT INTO Photos(photo_data, album_id, photo_caption) VALUES (%s, %s, %s)""",
                        (photo_data, album_id, caption))
         self.conn.commit()
-        return
+        
+        return cursor.lastrowid
 
     def addNewUser(self, firstname, lastname, email, dob, password):
         cursor = self.conn.cursor()
         cursor.execute(
             f"INSERT INTO Users (first_name, last_name, email, dob, password) VALUES ('{firstname}', '{lastname}', '{email}', '{dob}', '{password}')")
-        self.conn.commit()
-        return
-
-    def addfriend(self, uid1, uid2):
-        cursor = self.conn.cursor()
-        cursor.execute(
-            f"INSERT INTO Friends_with (user_1, user_2) VALUES ('{uid1}', '{uid2}')")
         self.conn.commit()
         return
 
@@ -120,34 +79,31 @@ class dbconnector():
         else:
             return True
     # end login code
-    def isTagValid(self,tag):
-       # Check to see if input tag is in correct format
-       tag_list = tag.split(", ")
-       for word in tag_list:
-           if ' ' in word:
-               return False
-          
-       return True
 
+    def isTagValid(self,tag):
+        # Check to see if input tag is in correct format
+        tag_list = tag.split(", ")
+        for word in tag_list:
+            if ' ' in word:
+                return False
+            
+        return True
 
     def getTaggedWith(self,tag,photoID):
-       cursor = self.conn.cursor()
-       multipleTags = tag.split(", ")
-       for word in multipleTags:
-           cursor.execute(f"INSERT INTO Tagged_With (tag_name, photo_id) VALUES ('{word}', '{photoID}') ")
-           cursor.execute(f"INSERT INTO Tags (tag_name) ('{word}')")
-       return
-
-
-
+        cursor = self.conn.cursor()
+        multipleTags = tag.split(", ")
+        for word in multipleTags:
+            cursor.execute(f"INSERT INTO Tagged_With (tag_name, photo_id) VALUES ('{word}', '{photoID}') ")
+            cursor.execute(f"INSERT INTO Tags (tag_name) ('{word}')")
+        return
 
 
 
     def isDOBCorrect(self, dob):
-       # Use this to check if DOB format is correct
-       try:
-           datetime.date.fromisoformat(dob)
-           return True
-       except ValueError:
-           return False
-      
+        # Use this to check if DOB format is correct
+        try:
+            datetime.date.fromisoformat(dob)
+            return True
+        except ValueError:
+            return False
+        
