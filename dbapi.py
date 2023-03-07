@@ -76,17 +76,66 @@ class dbconnector():
                 possible_friends.append(user)
         return possible_friends
 
-    def getUsersPhotos(self, uid):
+    def getPhotos(self, tagfilter=None):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT Photos.photo_data, Photos.photo_id, Photos.photo_caption FROM Photos")
+        photos = list(cursor.fetchall())
+        filtered_photos = []
+        if tagfilter:
+            for photo in photos:
+                if tagfilter in self.getPhotoTags(photo[1]):
+                    filtered_photos.append(photo)
+        else:
+            filtered_photos = photos
+        return filtered_photos
+
+    def getUsersPhotos(self, uid, tagfilter=None):
         cursor = self.conn.cursor()
         cursor.execute(
             f"SELECT Photos.photo_data, Photos.photo_id, Photos.photo_caption, Owns_Album.user_id FROM Photos JOIN Has_Photo ON Photos.photo_id=Has_Photo.photo_id JOIN Owns_Album ON Has_Photo.album_id=Owns_Album.album_id WHERE Owns_Album.user_id='{uid}'")
-        return list(cursor.fetchall())
+        photos = list(cursor.fetchall())
+        filtered_photos = []
+        if tagfilter:
+            for photo in photos:
+                if tagfilter in self.getPhotoTags(photo[1]):
+                    filtered_photos.append(photo)
+        else:
+            filtered_photos = photos
+        return filtered_photos
 
     def getPhotoData(self, photo_id):
         cursor = self.conn.cursor()
         cursor.execute(
-            f"SELECT Photos.photo_data, Photos.photo_caption FROM Photos WHERE photo_id='{photo_id}'")
+            f"SELECT Photos.photo_data, Photos.photo_caption, Photos.photo_id FROM Photos WHERE photo_id='{photo_id}'")
         return cursor.fetchone()
+
+    def getPhotoTags(self, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT tag_name FROM Tagged_With WHERE photo_id='{photo_id}'")
+        return [x[0] for x in cursor.fetchall()]
+
+    def addTagToPhoto(self, tag_name, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"INSERT INTO Tagged_With (photo_id, tag_name) VALUES('{photo_id}', '{tag_name}')")
+        self.conn.commit()
+        return
+
+    def checkTag(self, tag_name):
+        if ' ' in tag_name:
+            return False
+        for letter in tag_name:
+            if letter.isupper():
+                return False
+        return True
+
+    def getPhotoOwner(self, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT Owns_Album.user_id FROM Has_Photo JOIN Owns_Album ON Has_Photo.album_id=Owns_Album.album_id WHERE Has_Photo.photo_id='{photo_id}'")
+        return cursor.fetchone()[0]
 
     def getAlbumIDFromName(self, albumName, uid):
         cursor = self.conn.cursor()
@@ -164,11 +213,66 @@ class dbconnector():
         return
 
     def isEmailUnique(self, email):
-        # use this to check if a email has already been registered
         cursor = self.conn.cursor()
         if cursor.execute(f"SELECT email  FROM Users WHERE email = '{email}'"):
-            # this means there are greater than zero entries with that email
             return False
         else:
             return True
-    # end login code
+
+    def isliked(self, user_id, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT Likes_Photo.photo_id FROM Likes_Photo WHERE Likes_Photo.user_id='{user_id}' AND Likes_Photo.photo_id='{photo_id}'")
+        isliked = cursor.fetchone()
+        if isliked:
+            return True
+        else:
+            return False
+
+    def likePhoto(self, user_id, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"INSERT INTO Likes_Photo (user_id, photo_id) VALUES({user_id}, {photo_id})")
+        self.conn.commit()
+        return
+
+    def unlikePhoto(self, user_id, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"DELETE FROM Likes_Photo WHERE user_id='{user_id}' AND photo_id='{photo_id}'")
+        self.conn.commit()
+        return
+
+    def getMostPopularTags(self):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT tag_name, COUNT(tag_name) as `occurrence` FROM Tagged_With GROUP BY tag_name ORDER BY occurrence DESC LIMIT 3")
+        tag_count = cursor.fetchall()
+        return tag_count
+
+    def getPhotosFromTag(self, tagname):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT DISTINCT Photos.photo_data, Photos.photo_id, Photos.photo_caption FROM Photos JOIN Tagged_With ON Photos.photo_id=Tagged_With.photo_id WHERE Tagged_With.tag_name='{tagname}'")
+        photos = list(cursor.fetchall())
+        return photos
+
+    def addCommentToPhoto(self, comment, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"INSERT INTO Comments (comment_text) VALUES('{comment}')")
+        self.conn.commit()
+        comment_id = cursor.lastrowid
+        cursor.execute(
+            f"INSERT INTO Has_Comment (comment_id, photo_id) VALUES({comment_id}, {photo_id})")
+        self.conn.commit()
+        return
+
+    def getPhotoComments(self, photo_id):
+        cursor = self.conn.cursor()
+        cursor.execute(
+            f"SELECT Comments.comment_text FROM Has_Comment JOIN Comments ON Has_Comment.comment_id=Comments.comment_id WHERE Has_Comment.photo_id={photo_id}")
+        comments = list(cursor.fetchall())
+        for count, comment in enumerate(comments):
+            comments[count] = comment[0]
+        return comments
