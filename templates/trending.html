@@ -1,0 +1,16 @@
+<!-- author ben lawson (balawson@bu.edu) -->
+<!doctype html>
+<input type="button" value="< Back" onclick="history.back()">
+<title>Trending</title>
+
+{% if tag_data %}
+<div class="container">
+  <ul>
+    {% for tag in tag_data %}
+    <li><a href="/tagview/{{tag[0]}}">{{tag[0]}}</a></li>
+    {% endfor %}
+  </ul>
+</div>
+{%else%}
+<h2>No trending tags found</h2>
+{% endif %}

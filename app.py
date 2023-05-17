@@ -1,14 +1,3 @@
-######################################
-# author ben lawson <balawson@bu.edu>
-# Edited by: Craig Einstein <einstein@bu.edu>
-######################################
-# Some code adapted from
-# CodeHandBook at http://codehandbook.org/python-web-application-development-using-flask-and-mysql/
-# and MaxCountryMan at https://github.com/maxcountryman/flask-login/
-# and Flask Offical Tutorial at  http://flask.pocoo.org/docs/0.10/patterns/fileuploads/
-# see links for further understanding
-###################################################
-
 import flask
 from flask import Flask, Response, request, render_template, redirect, url_for
 from flaskext.mysql import MySQL
@@ -24,11 +13,12 @@ import dbapi
 
 mysql = MySQL()
 app = Flask(__name__)
-app.secret_key = 'super secret string'  # Change this!
+app.secret_key = 'super secret string'
 
-
-# These will need to be changed according to your creditionals
 app.config['MYSQL_DATABASE_USER'] = 'root'
+
+# create a file named '.env' next to app.py, and put `dbpassword='SQL_PASSWORD'` inside, replacing SQL_PASSWORD with your Sql password
+# Then, `pip install python-dotenv`, and you are all set
 app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('dbpassword')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
@@ -40,6 +30,8 @@ login_manager.init_app(app)
 
 dbconnector = dbapi.dbconnector(mysql)
 users = dbconnector.getUserList()
+
+no_image_icon = open("no-image-icon.png", 'rb').read()
 
 
 class User(flask_login.UserMixin):
@@ -99,9 +91,8 @@ def login():
             user = User()
             user.id = email
             flask_login.login_user(user)  # okay login in user
-            return flask.redirect(flask.url_for('protected'))  # protected is a function defined in this file
+            return flask.redirect(flask.url_for('profile'))  # protected is a function defined in this file
 
-    # information did not match
     return "<a href='/login'>Try again</a>\
 			</br><a href='/register'>or make an account</a>"
 
@@ -116,52 +107,142 @@ def logout():
 def unauthorized_handler():
     return render_template('unauth.html')
 
-# you can specify specific methods (GET/POST) in function header instead of inside the functions as seen earlier
 
-
-@app.route("/register", methods=['GET'])
-def register():
-    try:
-        request.args['supress']
-        supress = None
-    except:
-        supress = True
-    print("here")
-    return render_template('register.html', supress=supress)
-
-
-@app.route("/register", methods=['POST'])
+@app.route("/register", methods=['GET', 'POST'])
 def register_user():
-    try:
-        firstname = request.form.get('firstname')
-        lastname = request.form.get('lastname')
-        email = request.form.get('email')
-        dob = request.form.get('dob')
-        password = request.form.get('password')
-    except:
-        # this prints to shell, end users will not see this (all print statements go to shell)
-        print("couldn't find all tokens")
-        return flask.redirect(flask.url_for('register'))
-    test = dbconnector.isEmailUnique(email)
-    if test:
-        dbconnector.addNewUser(firstname, lastname, email, dob, password)
-        user = User()
-        user.id = email
-        flask_login.login_user(user)
-        return render_template('hello.html', name=email, message='Account Created!')
+    if request.method == 'POST':
+        try:
+            firstname = request.form.get('firstname')
+            lastname = request.form.get('lastname')
+            email = request.form.get('email')
+            dob = request.form.get('dob')
+            password = request.form.get('password')
+        except:
+            return flask.redirect(flask.url_for('register'))
+        test = dbconnector.isEmailUnique(email)
+        if test:
+            dbconnector.addNewUser(firstname, lastname, email, dob, password)
+            user = User()
+            user.id = email
+            flask_login.login_user(user)
+            uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+            return render_template('hello.html', name=dbconnector.getUserNameFromUserID(uid), message='Account Created!')
+        else:
+            return flask.redirect(flask.url_for('register_user', supress=False))
     else:
-        print(f"User trying to regester as {email} is not unique")
-        return flask.redirect(flask.url_for('register', supress=False))
+        try:
+            request.args['supress']
+            supress = None
+        except:
+            supress = True
+        return render_template('register.html', supress=supress)
 
 
-@app.route('/profile')
+@app.route("/profile", methods=['GET', 'POST'])
 @flask_login.login_required
-def protected():
-    return render_template('hello.html', name=flask_login.current_user.id, message="Here's your profile")
+def profile():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    users_photos = dbconnector.getUsersPhotos(uid)
+    if not (message := request.args.get('message')):
+        message = None
+    if request.method == 'POST':
+        tagsearch = request.form.get('tagsearch')
+        users_photos = dbconnector.getUsersPhotos(uid, tagfilter=tagsearch)
+        return render_template('profile.html', name=dbconnector.getUserNameFromUserID(uid), photos=users_photos, base64=base64, message=message)
+    else:
+        return render_template('profile.html', name=dbconnector.getUserNameFromUserID(uid), photos=users_photos, base64=base64, message=message)
 
 
-# begin photo uploading code
-# photos uploaded using base64 encoding so they can be directly embeded in HTML
+@app.route('/albums')
+@flask_login.login_required
+def albums():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    users_albums = dbconnector.getUserAlbums(uid)
+    for count, album in enumerate(users_albums):
+        users_albums[count] = list(album)
+        album_photos = dbconnector.getPhotosInAlbum(album[0])
+        if album_photos:
+            photo_data = album_photos[0][0]
+        else:
+            photo_data = no_image_icon
+        users_albums[count].append(photo_data)
+    if not (message := request.args.get('message')):
+        message = None
+    return render_template('albums.html', name=dbconnector.getUserNameFromUserID(uid), albums=users_albums, base64=base64, message=message)
+
+
+@app.route('/albums/<album_id>')
+@flask_login.login_required
+def album(album_id):
+    album_photos = dbconnector.getPhotosInAlbum(album_id)
+    return render_template('albumpage.html', name="ALBUM_NAME", photos=album_photos, base64=base64)
+
+
+def photoviewHelper(photo_id):
+    photo_data = dbconnector.getPhotoData(photo_id)
+    image_tags = dbconnector.getPhotoTags(photo_id)
+    is_owner = dbconnector.getUserIdFromEmail(flask_login.current_user.id) == dbconnector.getPhotoOwner(photo_id)
+    comments = dbconnector.getPhotoComments(photo_id)
+    print(comments)
+    return photo_data, image_tags, is_owner, comments
+
+
+@app.route('/photoview/<photo_id>', methods=['GET', 'POST'])
+def photoview(photo_id):
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    if request.method == 'POST':
+        if comment := request.form.get('comment'):
+            dbconnector.addCommentToPhoto(comment=comment, photo_id=photo_id)
+            photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+            return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, liked=True, comments=comments)
+        if request.form.get('like_button') == 'like':
+            dbconnector.likePhoto(uid, photo_id)
+            photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+            return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, liked=True, comments=comments)
+        if request.form.get('like_button') == 'unlike':
+            dbconnector.unlikePhoto(uid, photo_id)
+            photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+            return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, liked=False, comments=comments)
+        if tag_name := request.form.get('newtagname'):
+            if dbconnector.checkTag(tag_name=tag_name):
+                dbconnector.addTagToPhoto(tag_name=tag_name, photo_id=photo_id)
+                photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+                return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, comments=comments)
+            else:
+                photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+                return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, tag_fail=True, comments=comments)
+    else:
+        photo_data, image_tags, is_owner, comments = photoviewHelper(photo_id=photo_id)
+        liked = dbconnector.isliked(uid, photo_id)
+        return render_template('photoview.html', photo_data=photo_data, image_tags=image_tags, is_owner=is_owner, base64=base64, liked=liked, comments=comments)
+
+
+@app.route('/tagview/<tagname>', methods=['GET'])
+def tagview(tagname):
+    tag_data = dbconnector.getPhotosFromTag(tagname)
+    return render_template('tagview.html', tag_data=tag_data, base64=base64)
+
+
+@app.route('/trending', methods=['GET'])
+def trending():
+    uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
+    tag_data = dbconnector.getMostPopularTags()
+    return render_template('trending.html', tag_data=tag_data)
+
+
+@app.route('/photosearch', methods=['GET', 'POST'])
+@flask_login.login_required
+def photosearch():
+    if request.method == 'POST':
+        pass
+    else:
+        tagslist = request.args.get('tagname')
+        photos = []
+        for tag in tagslist:
+            photos.extend(dbconnector.getPhotos(tagfilter=tag))
+        return render_template('photosearch.html', photos=photos, base64=base64)
+
+
 ALLOWED_EXTENSIONS = set(['png', 'jpg', 'jpeg', 'gif'])
 
 
@@ -181,17 +262,17 @@ def upload_file():
             dbconnector.createNewAlbum(albumName, uid)
         else:
             albumName = request.form.get('album')
-            print(f"ALBUMNAME: {albumName}")
             if albumName == None:
                 albums = dbconnector.getUserAlbums(uid)
                 return render_template('upload.html', albums=albums, failedAlbum=True)
         photo_data = imgfile.read()
         album_id = dbconnector.getAlbumIDFromName(albumName, uid)
         dbconnector.addNewPhoto(photo_data, album_id, caption)
-        return render_template('hello.html', name=flask_login.current_user.id, message='Photo uploaded!', photos=dbconnector.getUsersPhotos(uid), base64=base64)
+        return flask.redirect(flask.url_for('profile', message="Photo Uploaded!"))
     else:
         albums = dbconnector.getUserAlbums(uid)
-        print(albums)
+        for count, album in enumerate(albums):
+            albums[count] = album[1]
         return render_template('upload.html', albums=albums)
 
 
@@ -202,7 +283,7 @@ def new_album():
     if request.method == 'POST':
         newAlbumName = request.form.get('newalbum')
         dbconnector.createNewAlbum(newAlbumName, uid)
-        return render_template('hello.html', name=flask_login.current_user.id, message='Album Created!')
+        return render_template('hello.html', name=dbconnector.getUserNameFromUserID(uid), message='Album Created!')
     else:
         return render_template('newalbum.html')
 
@@ -211,8 +292,12 @@ def new_album():
 @flask_login.login_required
 def list_friends():
     uid = dbconnector.getUserIdFromEmail(flask_login.current_user.id)
-    user_friends = dbconnector.getUserFriends(uid)
-    if len(user_friends) == 0:
+    user_friends_names = dbconnector.getUserFriendsNames(uid)
+    user_friends_emails = dbconnector.getUserFriendsEmails(uid)
+    user_friends = []
+    for count, friend in enumerate(user_friends_names):
+        user_friends.append(f"{friend} ({user_friends_emails[count]})")
+    if len(user_friends_names) == 0:
         return render_template('friends.html', nofriends=True)
     else:
         return render_template('friends.html', friends=user_friends)
@@ -226,21 +311,26 @@ def add_friend():
         newfriendemail = request.form.get('newfriend')
         frienduid = dbconnector.getUserIdFromEmail(newfriendemail)
         dbconnector.addfriend(frienduid, uid)
-        return render_template('hello.html', name=flask_login.current_user.id, message='Friend Added!')
+        return render_template('hello.html', name=dbconnector.getUserNameFromUserID(uid), message='Friend Added!')
     else:
-        allusers = dbconnector.getUserList(exclude=uid)
-        if len(allusers) == 0:
+        possible_friends = dbconnector.getPossibleFriends(uid=uid)
+        if len(possible_friends) == 0:
             return render_template('addfriend.html', nousers=True)
         else:
-            return render_template('addfriend.html', users=allusers)
+            return render_template('addfriend.html', users=possible_friends)
 
 # default page
-@app.route("/", methods=['GET'])
+
+
+@app.route("/", methods=['GET', 'POST'])
 def hello():
-    return render_template('hello.html', message='Welecome to Photoshare')
+    if request.method == 'POST':
+        tagsearch = request.form.get('tagsearch')
+        tags_list = tagsearch.split(' ')
+        return flask.redirect(flask.url_for('photosearch', tagname=tagsearch))
+    else:
+        return render_template('hello.html', message='Welecome to Photoshare')
 
 
 if __name__ == "__main__":
-    # this is invoked when in the shell  you run
-    # $ python app.py
-    app.run(port=5000, debug=True)
+    app.run(port=8000, debug=True)

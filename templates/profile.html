@@ -1,0 +1,55 @@
+<!-- author ben lawson (balawson@bu.edu) -->
+<!doctype html>
+<input type="button" value="< Back" onclick="history.back()">
+<title>Profile</title>
+{% if message %}
+<h2>{{ message }}</h2>
+{% endif %}
+
+{% if name %}
+<h1>{{ name }}'s Profile</h1>
+{% endif %}
+
+{% if photos %}
+<style>
+  .container {
+    display: grid;
+    grid-template-columns: repeat(3, 302px);
+    grid-template-rows: repeat(10, 302px);
+    grid-gap: 1em;
+  }
+
+  .box img {
+    object-fit: cover;
+    width: 300px;
+    height: 300px;
+    border: 1px solid teal;
+  }
+
+  .box h2 {
+    text-align: center;
+    transform: translate(0, -60px);
+    filter: drop-shadow(3px 3px 2px black);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+  form {
+    transform: translate(700px, -50px);
+  }
+</style>
+<form method="post" enctype="multipart/form-data" action="/profile">
+  <input type="text" class="form-control" placeholder="Tag Name" name="tagsearch" required>
+  <button type="submit" value="Search" class="btn btn-default submit">Search</button>
+</form>
+<div class="container">
+  {% for photo in photos %}
+  <div class="box">
+    <a href="/photoview/{{photo[1]}}"><img
+        src='data:image/jpg;base64, {{ base64.b64encode(photo[0]).decode("ascii") }}' /></a>
+    <h2>{{photo[2]}}</h2>
+  </div>
+  {% endfor %}
+</div>
+{%else%}
+<h3>You don't have any photo's </h3>
+<h3><a href='/upload'>Upload a photo?</a> </h3>
+{% endif %}

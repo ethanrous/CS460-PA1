@@ -1,25 +1,25 @@
 <!-- author ben lawson (balawson@bu.edu) -->
-
+<a href='/'> &#60;-- Home</a>
 <head>
-    <title>Your Friends!</title>
+    <title>Social</title>
 </head>
 
 <body>
     <div class="title">
-        <h1>Your Friends!</h1>
+        <h1>Social</h1>
     </div>
     {% if nofriends %}
     <h4>You do not have any friends, go add some!</h4>
     <h4><a href='/addfriend'>Add Friends</a> </h4>
     <h4><a href='/'>Return Home</a> </h4>
     {% else %}
-    <h2><a href='/'>List of everyone you are currently friends with:</a> </h2>
-
-    {% for user in users %}
-    <h4>{{user}}</h4>
-    {% endfor %}
+    <h2>Your Friends:</h2>
+    <ul>
+        {% for friend in friends %}
+        <li>{{friend}}</li>
+        {% endfor %}
+    </ul>
     <h4><a href='/addfriend'>Add More Friends</a> </h4>
-    <h4><a href='/'>Return Home</a> </h4>
     {% endif %}
     </form>
 </body>
