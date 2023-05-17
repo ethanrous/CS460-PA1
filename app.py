@@ -2,6 +2,7 @@ import flask
 from flask import Flask, Response, request, render_template, redirect, url_for
 from flaskext.mysql import MySQL
 import flask_login
+import dotenv
 
 # for image uploading
 import os
@@ -17,8 +18,8 @@ app.secret_key = 'super secret string'
 
 app.config['MYSQL_DATABASE_USER'] = 'root'
 
-# create a file named '.env' next to app.py, and put `dbpassword='SQL_PASSWORD'` inside, replacing SQL_PASSWORD with your Sql password
-# Then, `pip install python-dotenv`, and you are all set
+# export dbpassword='SQL_SERVER_PASSWORD', or
+dotenv.load_dotenv()
 app.config['MYSQL_DATABASE_PASSWORD'] = os.getenv('dbpassword')
 app.config['MYSQL_DATABASE_DB'] = 'photoshare'
 app.config['MYSQL_DATABASE_HOST'] = 'localhost'
